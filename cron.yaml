@@ -1,0 +1,8 @@
+cron:
+- description: rss 
+  url: /fetch
+  schedule: every 2 hours synchronized 
+- description: daily clear 
+  url: /clear
+  schedule: every 12 hours 
+

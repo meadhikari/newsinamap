@@ -1,0 +1,253 @@
+
+<html>
+<head>
+<meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+<link href='http://fonts.googleapis.com/css?family=Gruppo' rel='stylesheet' type='text/css'>
+
+<style type="text/css">
+p
+{
+  font-family: 'Gruppo', cursive;
+
+}
+.classname {
+  -moz-box-shadow:inset 0px 1px 0px 0px #ffffff;
+  -webkit-box-shadow:inset 0px 1px 0px 0px #ffffff;
+  box-shadow:inset 0px 1px 0px 0px #ffffff;
+  background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #ededed), color-stop(1, #dfdfdf) );
+  background:-moz-linear-gradient( center top, #ededed 5%, #dfdfdf 100% );
+  filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#ededed', endColorstr='#dfdfdf');
+  background-color:#ededed;
+  -moz-border-radius:6px;
+  -webkit-border-radius:6px;
+  border-radius:6px;
+  border:1px solid #dcdcdc;
+  display:inline-block;
+  color:#777777;
+  height:16px;
+  width:75px;
+  font-family:arial;
+  font-size:15px;
+  padding:6px 55px;
+  text-decoration:none;
+  text-shadow:1px 1px 0px #ffffff;
+}.classname:hover {
+  background:-webkit-gradient( linear, left top, left bottom, color-stop(0.05, #dfdfdf), color-stop(1, #ededed) );
+  background:-moz-linear-gradient( center top, #dfdfdf 5%, #ededed 100% );
+  filter:progid:DXImageTransform.Microsoft.gradient(startColorstr='#dfdfdf', endColorstr='#ededed');
+  background-color:#dfdfdf;
+}.classname:active {
+  position:relative;
+  top:1px;
+}
+</style>
+<title>News in a Map.[{{section}}] Hover over a marker for the news.</title>
+    <script type="text/javascript" src="http://maps.google.com/maps/api/js?sensor=false"></script>
+    <script type="text/javascript" src="http://connect.facebook.net/en_US/all.js"></script>
+<script type="text/javascript">
+var fullname;
+var username;
+   var a = new Array();
+   var map;
+  var infowindow;
+  function post_to_url(path, params, method) {
+    method = method || "post"; // Set method to post by default, if not specified.
+
+    // The rest of this code assumes you are not using a library.
+    // It can be made less wordy if you use one.
+    var form = document.createElement("form");
+    form.setAttribute("method", method);
+    form.setAttribute("action", path);
+
+    for(var key in params) {
+        if(params.hasOwnProperty(key)) {
+            var hiddenField = document.createElement("input");
+            hiddenField.setAttribute("type", "hidden");
+            hiddenField.setAttribute("name", key);
+            hiddenField.setAttribute("value", params[key]);
+
+            form.appendChild(hiddenField);
+         }
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+}
+(function () {
+
+  google.maps.Map.prototype.markers = new Array();
+    
+  google.maps.Map.prototype.addMarker = function(marker) {
+    this.markers[this.markers.length] = marker;
+  };
+    
+  google.maps.Map.prototype.getMarkers = function() {
+    return this.markers
+  };
+    
+  google.maps.Map.prototype.clearMarkers = function() {
+    if(infowindow) {
+      infowindow.close();
+    }
+    
+    for(var i=0; i<this.markers.length; i++){
+      this.markers[i].set_map(null);
+    }
+  };
+})();
+  
+  function initialize() {
+	  FB.init({
+          appId      : '465611416803024', // Your App ID
+          channelUrl : 'http://backend-newsinamap.appspot.com', // Path to your Channel File
+          status     : true, // check login status
+          cookie     : true, // enable cookies to allow the server to access the session
+          xfbml      : true  // parse XFBML
+        });
+        // listen for and handle auth.statusChange events
+        FB.Event.subscribe('auth.statusChange', function(response) {
+          if (response.authResponse) {
+            // user has auth'd your app and is logged into Facebook
+            FB.api('/me', function(me){
+              if (me.name) {
+                document.getElementById('auth-displayname').innerHTML = me.name;
+                fullname = me.name;
+                
+                username = me.username
+                 //just to write that delete text in the title if the current logged in user has some post
+                 {%for info in tosend%}
+					var t =  new Object();
+					var linker = '{{info['link']}}';
+					var content = '{{info['content']}}';
+					var posterusername = linker.replace("http://facebook.com/","") 
+      
+					if (username === posterusername)
+					{
+						
+						t.name =  "<strong>{{info['title']}} <a href='javascript:post_to_url(\"deletepost\",{\"username\":\""+username+"\",\"content\":\""+content+"\"})'> [Delete]</a>  </strong></strong></strong><br>{{info['content']}}<a href={{info['link']}} target='_blank'> more</a></font>"
+					}
+					else
+					{
+					t.name =  "<strong>{{info['title']}}</strong><br>{{info['content']}}<a href={{info['link']}} target='_blank'> more</a></font>"
+
+					}
+					t.lat =  {{info['latitude']}}
+					t.lng =  {{info['longitude']}}
+					a.push(t);
+  
+
+				{%endfor%}
+   
+				for (var i = 0; i < a.length; i++) {
+				var latlng = new google.maps.LatLng(a[i].lat, a[i].lng);
+				map.addMarker(createMarker(a[i].name,latlng));
+                }
+   
+              }
+              
+            })
+            
+            document.getElementById('auth-loggedout').style.display = 'none';
+            document.getElementById('auth-loggedin').style.display = 'block';
+          } else {
+            // user has not auth'd your app, or is not logged into Facebook
+            
+            document.getElementById('auth-loggedout').style.display = 'block';
+            document.getElementById('auth-loggedin').style.display = 'none';
+          }
+        });
+        // respond to clicks on the login and logout links
+        document.getElementById('auth-loginlink').addEventListener('click', function(){
+          FB.login();
+        });
+        document.getElementById('auth-logoutlink').addEventListener('click', function(){
+          FB.logout();
+          fullname = null;
+        }); 
+        {% if section == 'Social' %}
+			var latlng = new google.maps.LatLng(28.39486, 84.12401);
+			var zoomlevel = 7
+		{% else %}
+			var latlng = new google.maps.LatLng(50.9406645, 6.9599115);
+			var zoomlevel = 2
+		{% endif %}
+    //var latlng = new google.maps.LatLng(google.loader.ClientLocation.latitude, google.loader.ClientLocation.longitude);
+    var myOptions = {
+      zoom: zoomlevel,
+      center: latlng,
+      mapTypeId: google.maps.MapTypeId.ROADMAP
+      //mapTypeId: google.maps.MapTypeId.SATELLITE
+    };
+    map = new google.maps.Map(document.getElementById("map_canvas"), myOptions);
+    if (username === undefined)
+    {
+		 {%for info in tosend%}
+					var t =  new Object();
+					var linker = '{{info['link']}}';
+					var posterusername = linker.replace("http://facebook.com/","") 
+                	t.name =  "<strong>{{info['title']}}</strong><br>{{info['content']}}<a href={{info['link']}} target='_blank'> more</a></font>"
+					t.lat =  {{info['latitude']}}
+					t.lng =  {{info['longitude']}}
+					a.push(t);
+  
+
+		{%endfor%}
+   
+				for (var i = 0; i < a.length; i++) {
+				var latlng = new google.maps.LatLng(a[i].lat, a[i].lng);
+				map.addMarker(createMarker(a[i].name,latlng));
+                }
+	}
+   
+       
+  }
+  
+  function createMarker(name, latlng) {
+    var marker = new google.maps.Marker({position: latlng, map: map});
+    google.maps.event.addListener(marker, "mouseover", function() {
+      if (infowindow) infowindow.close();
+      infowindow = new google.maps.InfoWindow({content: name ,maxWidth: 250});
+      infowindow.open(map, marker);
+    });
+    return marker;
+  }
+
+</script>
+</head>
+<body onload="initialize()">
+<div id="map_canvas" style="float: right; width: 1065px; height: 600px"></div>
+ <div id="auth-status">
+        <div id="auth-loggedout">
+          <a href="#" id="auth-loginlink" >Login</a>
+        </div>
+        <div id="auth-loggedin" style="display:none">
+          Hi, <span id="auth-displayname"></span>  
+        (<a href="#" id="auth-logoutlink">logout</a>)
+      </div>
+    </div>
+
+ 
+ <div id="nav">
+<a style="float:left;"href="/" class="classname">World</a>
+<br />
+<a style="float: left;"href="/tech" class="classname">Technology</a>
+<br />
+<a style="float: left;"href="/sports" class="classname">Sports</a>
+<br />
+<a style="float: left;"href="/entertainment" class="classname">Entertainment</a>
+<br />
+<a style="float: left;"href="/social" class="classname">Social(Viewer)</a>
+<br />
+<a style="float: left;"href="/socialinput" class="classname">Social(Post)</a>
+<br />
+<br />
+<br />
+<br />
+<p>News In A Map, a revolutionary way of reading news. A way to scan world news from the last 24 hours visually from the map. Hover over a pointer to view a news. Click more if you want to visit the source of the news and read the whole article. </p>
+<p>Social. Its a experimental feature where you can post news of your own. To post some content, first login and while you are on 'Social(Post)' click the desired location on the map</p>
+ </div>
+ </div>
+ 
+  </body>
+</html>
+​
